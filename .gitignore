@@ -1,48 +1,47 @@
-# Prerequisites
-*.d
+# PlatformIO build artifacts
+firmware/esp32-sensor-node/.pio/
+firmware/esp32-sensor-node/.vscode/
 
-# Object files
+# WiFi credentials — never commit
+firmware/esp32-sensor-node/include/config.h
+
+# Sensor data output
+data/sensor_log.csv
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# macOS
+.DS_Store
+
+# C/C++ compiled output
+*.d
 *.o
 *.ko
 *.obj
 *.elf
-
-# Linker output
 *.ilk
 *.map
 *.exp
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
 *.lib
 *.a
 *.la
 *.lo
-
-# Shared objects (inc. Windows DLLs)
 *.dll
 *.so
 *.so.*
 *.dylib
-
-# Executables
 *.exe
 *.out
 *.app
-*.i*86
-*.x86_64
 *.hex
-
-# Debug files
 *.dSYM/
 *.su
 *.idb
 *.pdb
-
-# Kernel Module Compile Results
 *.mod*
 *.cmd
 .tmp_versions/
@@ -50,6 +49,6 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-
-# debug information files
 *.dwo
+*.gch
+*.pch
