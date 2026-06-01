@@ -12,6 +12,10 @@ firmware/esp32-s3-cam/.vscode/
 
 # Sensor data output
 data/sensor_log.csv
+data/anomaly_log.csv
+
+# Anomaly snapshots
+snapshots/*.jpg
 
 # Python
 __pycache__/
