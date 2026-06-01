@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anomaly Detection Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0f1117; color: #e2e8f0; font-family: 'SF Mono', 'Fira Code', monospace; min-height: 100vh; }
+
+    header {
+      padding: 18px 24px;
+      border-bottom: 1px solid #1e2530;
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+    }
+    header h1 { font-size: 16px; letter-spacing: 0.06em; color: #e2e8f0; }
+    #last-update { font-size: 11px; color: #4b5563; }
+
+    .grid { display: grid; grid-template-rows: auto auto; gap: 16px; padding: 16px 24px; }
+
+    .sensor-section { display: grid; grid-template-columns: 1fr auto; gap: 16px; }
+    .bottom-section { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #1e2530;
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #4b5563;
+      margin-bottom: 14px;
+    }
+
+    /* stat cards */
+    .stat-cards { display: flex; flex-direction: column; gap: 12px; min-width: 150px; }
+    .stat-card {
+      background: #161b22;
+      border: 1px solid #1e2530;
+      border-radius: 8px;
+      padding: 16px 18px;
+    }
+    .stat-label { font-size: 10px; color: #4b5563; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+    .stat-value { font-size: 38px; font-weight: 700; line-height: 1; }
+    .stat-unit { font-size: 14px; font-weight: 400; color: #64748b; margin-left: 2px; }
+    .temp-color  { color: #f97316; }
+    .hum-color   { color: #3b82f6; }
+    .status-ok      { color: #22c55e; }
+    .status-anomaly { color: #ef4444; }
+    .status-unknown { color: #4b5563; }
+
+    /* chart */
+    .chart-container { position: relative; height: 220px; }
+
+    /* anomaly feed */
+    .anomaly-list { display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; }
+    .anomaly-card {
+      background: #0f1117;
+      border: 1px solid #1e2530;
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .anomaly-card.alert { border-color: #7f1d1d; background: rgba(127,29,29,0.12); }
+    .anomaly-ts { font-size: 11px; color: #4b5563; margin-bottom: 6px; }
+    .anomaly-row { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; }
+    .anomaly-val { color: #4b5563; }
+    .anomaly-val span { color: #94a3b8; }
+    .conf-high { color: #ef4444 !important; }
+    .conf-high span { color: #ef4444 !important; }
+
+    /* snapshot */
+    .snapshot-card { display: flex; flex-direction: column; }
+    .snapshot-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0f1117;
+      border-radius: 6px;
+      min-height: 260px;
+      overflow: hidden;
+    }
+    .snapshot-wrap img { max-width: 100%; max-height: 340px; border-radius: 4px; object-fit: contain; }
+    .snapshot-caption { font-size: 11px; color: #4b5563; margin-top: 8px; text-align: center; }
+
+    .empty-state { color: #374151; font-size: 12px; text-align: center; padding: 32px 0; width: 100%; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #1e2530; border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>INDUSTRIAL ANOMALY DETECTION</h1>
+  <span id="last-update">connecting...</span>
+</header>
+
+<div class="grid">
+
+  <!-- TOP: chart + stat cards -->
+  <div class="sensor-section">
+    <div class="card">
+      <div class="section-title">Live Sensor Feed</div>
+      <div class="chart-container">
+        <canvas id="sensorChart"></canvas>
+      </div>
+    </div>
+    <div class="stat-cards">
+      <div class="stat-card">
+        <div class="stat-label">Temperature</div>
+        <div class="stat-value temp-color" id="cur-temp">—<span class="stat-unit">°C</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Humidity</div>
+        <div class="stat-value hum-color" id="cur-humidity">—<span class="stat-unit">%</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Status</div>
+        <div class="stat-value status-unknown" id="cur-status" style="font-size:22px;letter-spacing:0.05em;">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM: anomaly feed + snapshot -->
+  <div class="bottom-section">
+    <div class="card">
+      <div class="section-title">Anomaly Events</div>
+      <div class="anomaly-list" id="anomaly-list">
+        <div class="empty-state">Loading...</div>
+      </div>
+    </div>
+
+    <div class="card snapshot-card">
+      <div class="section-title">Latest Snapshot</div>
+      <div class="snapshot-wrap" id="snapshot-wrap">
+        <div class="empty-state">No snapshots yet</div>
+      </div>
+      <div class="snapshot-caption" id="snapshot-caption"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── Chart setup ──────────────────────────────────────────────────────────────
+  const chart = new Chart(document.getElementById('sensorChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: 'Temperature (°C)',
+          data: [],
+          borderColor: '#f97316',
+          backgroundColor: 'rgba(249,115,22,0.07)',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: true,
+          yAxisID: 'yT',
+        },
+        {
+          label: 'Humidity (%)',
+          data: [],
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.07)',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: true,
+          yAxisID: 'yH',
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: '#4b5563', font: { size: 11, family: 'monospace' }, boxWidth: 10 },
+        },
+        tooltip: {
+          backgroundColor: '#1e2530',
+          titleColor: '#64748b',
+          bodyColor: '#e2e8f0',
+          borderColor: '#374151',
+          borderWidth: 1,
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#374151',
+            font: { size: 10 },
+            maxTicksLimit: 8,
+            maxRotation: 0,
+            callback(val) {
+              const label = this.getLabelForValue(val);
+              return label ? label.slice(11, 19) : '';
+            },
+          },
+          grid: { color: '#1a1f29' },
+        },
+        yT: {
+          position: 'left',
+          ticks: { color: '#f97316', font: { size: 10 } },
+          grid: { color: '#1a1f29' },
+          title: { display: true, text: '°C', color: '#f97316', font: { size: 10 } },
+        },
+        yH: {
+          position: 'right',
+          ticks: { color: '#3b82f6', font: { size: 10 } },
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: '%', color: '#3b82f6', font: { size: 10 } },
+        },
+      },
+    },
+  });
+
+  // ── Fetch sensors (every 5 s) ─────────────────────────────────────────────
+  async function fetchSensors() {
+    try {
+      const rows = await fetch('/api/sensors').then(r => r.json());
+      if (!rows.length) return;
+
+      chart.data.labels            = rows.map(r => r.timestamp);
+      chart.data.datasets[0].data  = rows.map(r => parseFloat(r.temperature));
+      chart.data.datasets[1].data  = rows.map(r => parseFloat(r.humidity));
+      chart.update('none');
+
+      const last = rows[rows.length - 1];
+      document.getElementById('cur-temp').innerHTML =
+        `${parseFloat(last.temperature).toFixed(1)}<span class="stat-unit">°C</span>`;
+      document.getElementById('cur-humidity').innerHTML =
+        `${parseFloat(last.humidity).toFixed(1)}<span class="stat-unit">%</span>`;
+      document.getElementById('last-update').textContent =
+        'updated ' + new Date().toLocaleTimeString();
+    } catch (e) { console.error('sensor fetch:', e); }
+  }
+
+  // ── Fetch status (every 5 s) ──────────────────────────────────────────────
+  async function fetchStatus() {
+    try {
+      const data = await fetch('/api/status').then(r => r.json());
+      const el   = document.getElementById('cur-status');
+      el.className = 'stat-value';
+      if (data.status === 'anomaly') {
+        el.classList.add('status-anomaly');
+        el.textContent = 'ANOMALY';
+      } else if (data.status === 'ok') {
+        el.classList.add('status-ok');
+        el.textContent = 'OK';
+      } else {
+        el.classList.add('status-unknown');
+        el.textContent = '—';
+      }
+    } catch (e) { console.error('status fetch:', e); }
+  }
+
+  // ── Fetch anomalies (every 10 s) ─────────────────────────────────────────
+  async function fetchAnomalies() {
+    try {
+      const rows = await fetch('/api/anomalies').then(r => r.json());
+      const list = document.getElementById('anomaly-list');
+
+      if (!rows.length) {
+        list.innerHTML = '<div class="empty-state">No anomalies recorded yet</div>';
+      } else {
+        list.innerHTML = rows.map(r => {
+          const conf   = parseFloat(r.confidence);
+          const isHigh = conf > 0.8;
+          return `
+            <div class="anomaly-card ${isHigh ? 'alert' : ''}">
+              <div class="anomaly-ts">${r.timestamp}</div>
+              <div class="anomaly-row">
+                <div class="anomaly-val">temp <span>${parseFloat(r.temperature).toFixed(1)}°C</span></div>
+                <div class="anomaly-val">hum <span>${parseFloat(r.humidity).toFixed(1)}%</span></div>
+                <div class="anomaly-val">err <span>${parseFloat(r.reconstruction_error).toExponential(2)}</span></div>
+                <div class="anomaly-val ${isHigh ? 'conf-high' : ''}">conf <span>${(conf * 100).toFixed(1)}%</span></div>
+              </div>
+            </div>`;
+        }).join('');
+      }
+    } catch (e) { console.error('anomaly fetch:', e); }
+  }
+
+  // ── Fetch latest snapshot (every 10 s, scans all history) ────────────────
+  async function fetchLatestSnapshot() {
+    try {
+      const data    = await fetch('/api/latest-snapshot').then(r => r.json());
+      const wrap    = document.getElementById('snapshot-wrap');
+      const caption = document.getElementById('snapshot-caption');
+      if (data.snapshot_file) {
+        wrap.innerHTML      = `<img src="/api/snapshots/${data.snapshot_file}" alt="anomaly snapshot">`;
+        caption.textContent = data.timestamp;
+      } else {
+        wrap.innerHTML      = '<div class="empty-state">No snapshots yet</div>';
+        caption.textContent = '';
+      }
+    } catch (e) { console.error('snapshot fetch:', e); }
+  }
+
+  fetchSensors();
+  fetchStatus();
+  fetchAnomalies();
+  fetchLatestSnapshot();
+  setInterval(fetchSensors,         5_000);
+  setInterval(fetchStatus,          5_000);
+  setInterval(fetchAnomalies,      10_000);
+  setInterval(fetchLatestSnapshot, 10_000);
+</script>
+</body>
+</html>
