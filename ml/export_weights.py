@@ -41,7 +41,7 @@ payload = {
     "layers":    layers_data,
     "scaler":    scaler_params,
     "threshold": threshold,
-    "features":  ["temperature", "humidity", "pressure"],
+    "features":  ["temperature", "humidity"],
 }
 
 with open(WEIGHTS_OUT, "w") as f:

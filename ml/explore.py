@@ -17,7 +17,7 @@ PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Load ──────────────────────────────────────────────────────────────────────
 df = pd.read_csv(DATA_PATH, parse_dates=["timestamp"])
-features = ["temperature", "humidity", "pressure"]
+features = ["temperature", "humidity"]
 
 print(f"Loaded {len(df)} rows from {DATA_PATH.name}\n")
 

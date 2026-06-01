@@ -23,7 +23,7 @@ with open(THRESH_PKL, "rb") as f:
     threshold = pickle.load(f)
 
 df       = pd.read_csv(DATA_PATH, parse_dates=["timestamp"])
-features = ["temperature", "humidity", "pressure"]
+features = ["temperature", "humidity"]
 X        = scaler.transform(df[features].values)
 
 print(f"Loaded {len(df)} rows")
@@ -47,18 +47,18 @@ if len(anomalies) > 0:
 
 # ── Simulate fake anomalies ───────────────────────────────────────────────────
 fake = np.array([
-    [45.0, 95.0, 940.0],
-    [45.0, 95.0, 940.0],
-    [45.0, 95.0, 940.0],
-    [45.0, 95.0, 940.0],
-    [45.0, 95.0, 940.0],
+    [45.0, 95.0],
+    [45.0, 95.0],
+    [45.0, 95.0],
+    [45.0, 95.0],
+    [45.0, 95.0],
 ])
 fake_norm  = scaler.transform(fake)
 fake_pred  = model.predict(fake_norm, verbose=0)
 fake_err   = np.mean(np.square(fake_norm - fake_pred), axis=1)
 fake_flags = fake_err > threshold
 
-print(f"\n=== Simulated Anomalies (temp=45°C, humidity=95%, pressure=940hPa) ===")
+print(f"\n=== Simulated Anomalies (temp=45°C, humidity=95%) ===")
 for i, (err, flagged) in enumerate(zip(fake_err, fake_flags)):
     result = "FLAGGED ✓" if flagged else "missed ✗"
     print(f"  sample {i+1}: recon_error={err:.6f}  →  {result}")

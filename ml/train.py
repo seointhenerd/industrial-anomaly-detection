@@ -22,13 +22,13 @@ X_train, X_val = train_test_split(X, test_size=0.2, random_state=42, shuffle=Tru
 print(f"Train: {X_train.shape}  Val: {X_val.shape}")
 
 # ── Build autoencoder ─────────────────────────────────────────────────────────
-inputs  = keras.Input(shape=(3,))
+inputs  = keras.Input(shape=(2,))
 encoded = layers.Dense(16, activation="relu")(inputs)
 encoded = layers.Dense(8,  activation="relu")(encoded)
 encoded = layers.Dense(4,  activation="relu")(encoded)
 decoded = layers.Dense(8,  activation="relu")(encoded)
 decoded = layers.Dense(16, activation="relu")(decoded)
-outputs = layers.Dense(3,  activation="linear")(decoded)
+outputs = layers.Dense(2,  activation="linear")(decoded)
 
 model = keras.Model(inputs, outputs, name="anomaly_autoencoder")
 model.compile(optimizer="adam", loss="mse")
