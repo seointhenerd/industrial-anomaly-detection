@@ -4,9 +4,18 @@ firmware/esp32-sensor-node/.vscode/
 
 # WiFi credentials — never commit
 firmware/esp32-sensor-node/include/config.h
+firmware/esp32-s3-cam/include/config.h
+
+# PlatformIO build artifacts (cam)
+firmware/esp32-s3-cam/.pio/
+firmware/esp32-s3-cam/.vscode/
 
 # Sensor data output
 data/sensor_log.csv
+data/anomaly_log.csv
+
+# Anomaly snapshots
+snapshots/*.jpg
 
 # Python
 __pycache__/
